@@ -14,10 +14,16 @@ import android.widget.DatePicker;
 import android.widget.TimePicker;
 import android.widget.Toast;
 
+import java.util.ArrayList;
 import java.util.Calendar;
 
 public class add_Alarm extends AppCompatActivity {
-    int date, month, year, hour, minute;
+    int date, month, year, hour, minute1;
+
+    ArrayList<ParentBean> parentlist;
+    ArrayList<ChildBean> childlist;
+    String song;
+    boolean vibrate;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -32,6 +38,10 @@ public class add_Alarm extends AppCompatActivity {
             @Override
             public void onClick(View view) {
                 add_alarm();
+                ParentBean pb = new ParentBean(hour, minute1, date, month, year, true);
+                 ChildBean cb = new ChildBean(song, vibrate );
+                pb.toString();
+                cb.toString();
             }
         });
     }
@@ -42,7 +52,7 @@ public class add_Alarm extends AppCompatActivity {
          month = calendar.get(Calendar.MONTH);
          year = calendar.get(Calendar.YEAR);
          hour = calendar.get(Calendar.HOUR_OF_DAY);
-         minute = calendar.get(Calendar.MINUTE);
+         minute1 = calendar.get(Calendar.MINUTE);
     }
 
     public void add_alarm(){
@@ -52,9 +62,11 @@ public class add_Alarm extends AppCompatActivity {
             @Override
             public void onTimeSet(TimePicker view, int hourOfDay, int minute) {
                 Toast.makeText(add_Alarm.this, hourOfDay+" "+minute+"is selected",Toast.LENGTH_LONG).show();
+                hour = hourOfDay;
+                minute1 = minute;
                 set_date();
             }
-        },hour,minute,false);
+        },hour,minute1,false);
         timePickerDialog.setTitle("Select Time");
         timePickerDialog.show();
 
@@ -65,8 +77,11 @@ public class add_Alarm extends AppCompatActivity {
 
         DatePickerDialog datePickerDialog = new DatePickerDialog(add_Alarm.this, new DatePickerDialog.OnDateSetListener() {
             @Override
-            public void onDateSet(DatePicker view, int year, int month, int dayOfMonth) {
+            public void onDateSet(DatePicker view, int year1, int month1, int dayOfMonth1) {
 
+                year = year1;
+                month = month1;
+                date = dayOfMonth1;
             }
         },year, month,date);
 
