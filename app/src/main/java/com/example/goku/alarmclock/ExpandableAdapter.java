@@ -1,13 +1,20 @@
 package com.example.goku.alarmclock;
 
+import android.app.AlarmManager;
+import android.app.AlertDialog;
+import android.app.Dialog;
+import android.app.PendingIntent;
 import android.content.Context;
+import android.content.Intent;
 import android.text.Layout;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.BaseExpandableListAdapter;
+import android.widget.CheckBox;
 import android.widget.CompoundButton;
+import android.widget.ImageButton;
 import android.widget.Switch;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -16,6 +23,7 @@ import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Created by Goku on 10/06/2017.
@@ -27,27 +35,34 @@ public class ExpandableAdapter extends BaseExpandableListAdapter {
     private Context ctx;
     private ArrayList<ParentBean> parentlist;
     private ArrayList<ChildBean> childlist;
-    HashMap<ParentBean ,ArrayList<ChildBean>> map;
+    Map<ParentBean ,ArrayList<ChildBean>> map;
+    Intent intent ;
+    PendingIntent pendingIntent;
+    AlarmManager manager;
 
 
-    public ExpandableAdapter(Context ctx, ArrayList<ParentBean> parentlist, ArrayList<ChildBean> childlist){
+    public ExpandableAdapter(Context ctx, ArrayList<ParentBean> parentlist, ArrayList<ChildBean> childlist, Map<ParentBean,ArrayList<ChildBean>> map){
 
         this.ctx = ctx;
         this.parentlist = parentlist;
         this.childlist = childlist;
-         map = new HashMap<>();
-        for(ParentBean pb : parentlist){
+         this.map = map;
+        intent = new Intent(ctx,BroadcastReciever.class);
+        manager = (AlarmManager)ctx.getSystemService(Context.ALARM_SERVICE);
+
+        //for(ParentBean pb : parentlist){
             ;
 
-        map.put(pb,childlist);
+        //map.put(pb,childlist);
         Log.e("childliset",String.valueOf(childlist.size()));
-    }}
+    }
     @Override
     public int getGroupCount() {
         Log.d("problem","1");
         for(ParentBean b : parentlist){
             Log.e("parentlist",b.toString());
         }
+//        Log.e("map3", String.valueOf(map.get(parentlist.get(0))));
 
         return parentlist.size();
     }
@@ -55,22 +70,23 @@ public class ExpandableAdapter extends BaseExpandableListAdapter {
     @Override
     public int getChildrenCount(int groupPosition) {
         Log.e("problem", "30");
-        Log.e("childlist",String.valueOf(childlist.size()));
+        Log.e("childlist",String.valueOf(map.get(parentlist.get(groupPosition)).size()));
 
-        return map.get(groupPosition).size();
+        return 1;
     }
 
     @Override
     public Object getGroup(int groupPosition) {
         Log.e("problem2 ", parentlist.get(groupPosition).toString());
         Log.e("groupPosition",String.valueOf(groupPosition));
+        Log.e("map", String.valueOf(map.get(parentlist.get(groupPosition)).get(0)));
         return parentlist.get(groupPosition);
     }
 
     @Override
     public Object getChild(int groupPosition, int childPosition) {
         Log.e("problem3",childlist.get(childPosition).toString());
-        return childlist.get(childPosition);
+        return childlist.get(groupPosition);
     }
 
     @Override
@@ -107,10 +123,14 @@ public class ExpandableAdapter extends BaseExpandableListAdapter {
             @Override
             public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
                 if(isChecked==true){
-                Toast.makeText(ctx,"alarm on ",Toast.LENGTH_SHORT).show();
+
+                    pendingIntent = PendingIntent.getBroadcast(ctx,parentlist.get(groupPosition).getRequest(),intent,PendingIntent.FLAG_UPDATE_CURRENT);
+                    manager.set(AlarmManager.RTC_WAKEUP,parentlist.get(groupPosition).getTime(),pendingIntent);
                     parentlist.get(groupPosition).setStatus(true);
                 }if(isChecked==false){
-                    Toast.makeText(ctx,"alarm off",Toast.LENGTH_LONG).show();
+                    pendingIntent = PendingIntent.getBroadcast(ctx,parentlist.get(groupPosition).getRequest(),intent,PendingIntent.FLAG_UPDATE_CURRENT);
+                    manager.cancel(pendingIntent);
+                    Log.e("alarm","stops");
                     parentlist.get(groupPosition).setStatus(false);
                 }
             }
@@ -136,7 +156,7 @@ public class ExpandableAdapter extends BaseExpandableListAdapter {
     }
 
     @Override
-    public View getChildView(int groupPosition, int childPosition, boolean isLastChild, View convertView, ViewGroup parent) {
+    public View getChildView(final int groupPosition, int childPosition, boolean isLastChild, View convertView, ViewGroup parent) {
 
         Log.e("mission","impossible");
         ChildBean footer = (ChildBean)this.getChild(groupPosition,childPosition);
@@ -145,6 +165,38 @@ public class ExpandableAdapter extends BaseExpandableListAdapter {
             convertView = inflater.inflate(R.layout.child_view,parent,false);
 
         }
+        CheckBox vibrate = (CheckBox)convertView.findViewById(R.id.vibrate);
+        vibrate.setChecked(childlist.get(groupPosition).getVibrate());
+        vibrate.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+                if (isChecked==true){
+                    childlist.get(groupPosition).setVibrate(true);
+                }else{
+                    childlist.get(groupPosition).setVibrate(false);
+                }
+            }
+        });
+
+        ImageButton delete = (ImageButton) convertView.findViewById(R.id.delete);
+        delete.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Log.e("group",String.valueOf(groupPosition));
+
+
+                Log.e("requset",String.valueOf(parentlist.get(groupPosition).getRequest()));
+                 pendingIntent = PendingIntent.getBroadcast(ctx,parentlist.get(groupPosition).getRequest(),intent,PendingIntent.FLAG_UPDATE_CURRENT);
+                manager.cancel(pendingIntent);
+                childlist.remove(groupPosition);
+                parentlist.remove(groupPosition);
+                Log.e("one","time");
+//                this.notify();
+                notifyDataSetChanged();
+
+            }
+        });
+
 
 
 

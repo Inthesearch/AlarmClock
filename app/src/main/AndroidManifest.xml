@@ -20,7 +20,9 @@
             </intent-filter>
         </activity>
 
-        <receiver android:name = "BroadcastReciever"/>
+        <receiver android:name=".BroadcastReciever" />
+
+        <activity android:name=".LoginPage"></activity>
     </application>
 
 </manifest>

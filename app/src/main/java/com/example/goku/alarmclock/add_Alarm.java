@@ -16,25 +16,28 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.widget.DatePicker;
 import android.widget.ExpandableListView;
+import android.widget.ImageButton;
 import android.widget.Switch;
 import android.widget.TimePicker;
 import android.widget.Toast;
 
 import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.HashMap;
+import java.util.Map;
 
 public class add_Alarm extends AppCompatActivity {
     int date, month, year, hour, minute1;
 
     ArrayList<ParentBean> parentlist;
     ArrayList<ChildBean> childlist;
-    String song;
-    boolean vibrate;
+    Map<ParentBean,ArrayList<ChildBean>> map;
+
     AlarmManager manager ;
     Intent intent;
     PendingIntent pendingIntent;
     Calendar calendar;
-    int request;
+     int request;
 
     ExpandableListView expandableListView;
     @Override
@@ -48,6 +51,7 @@ public class add_Alarm extends AppCompatActivity {
          expandableListView = (ExpandableListView)findViewById(R.id.expandablelist );
         parentlist = new ArrayList<>();
         childlist = new ArrayList<>();
+        map= new HashMap<>();
 
         FloatingActionButton fab = (FloatingActionButton) findViewById(R.id.fab);
 
@@ -120,8 +124,7 @@ public class add_Alarm extends AppCompatActivity {
 
                 Log.e("tim2",String.valueOf(minute1));
                 Log.e("pending",String.valueOf(calendar.getTimeInMillis()));
-                pendingIntent = PendingIntent.getBroadcast(add_Alarm.this,parentlist.size(),intent,PendingIntent.FLAG_UPDATE_CURRENT);
-                manager.set(AlarmManager.RTC_WAKEUP,calendar.getTimeInMillis(),pendingIntent);
+
                 set_objects();
               /*  ParentBean pb = new ParentBean(hour, minute1, date, month, year, true);
                 ChildBean cb = new ChildBean(song, vibrate );
@@ -137,31 +140,52 @@ public class add_Alarm extends AppCompatActivity {
     public void set_objects(){
         Log.e("date set",String.valueOf(year));
         Log.e("main","started"); ParentBean pb = new ParentBean(hour, minute1, date, month, year, true);
+
+        if(parentlist.size()==0){
+            pb.setRequest(parentlist.size());
+
+        }else{
+        for(int j =1 ; j<=parentlist.size();j++){
+            if(pb.getRequest()==parentlist.get(j-1).getRequest()){
+                pb.setRequest(pb.getRequest()+1);
+            }
+        }}
+
         ChildBean cb = new ChildBean("ok", true );
 
         Log.d("pb" , pb.toString());
+        pendingIntent = PendingIntent.getBroadcast(add_Alarm.this,pb.getRequest(),intent,PendingIntent.FLAG_UPDATE_CURRENT);
+        manager.set(AlarmManager.RTC_WAKEUP,calendar.getTimeInMillis(),pendingIntent);
+        pb.setTime(calendar.getTimeInMillis());
         parentlist.add(pb);
         for(ParentBean pb1 : parentlist){
             Log.e("p1" , pb1.toString());
         }
         Log.d("cb",cb.toString());
         childlist.add(cb);
+        for(int i=0;i<parentlist.size();i++){
+            map.put(parentlist.get(i),childlist);
+        }
 
-        ExpandableAdapter adapter = new ExpandableAdapter(this, parentlist, childlist);
+        ExpandableAdapter adapter = new ExpandableAdapter(this, parentlist, childlist,map);
         Log.e("Expandable","ok");
-        adapter.notifyDataSetChanged();
 
+
+
+
+
+
+        expandableListView.setAdapter(adapter);
+        adapter.notifyDataSetChanged();
         expandableListView.setOnGroupClickListener(new ExpandableListView.OnGroupClickListener() {
             @Override
             public boolean onGroupClick(ExpandableListView parent, View v, int groupPosition, long id) {
                 Log.e("group","work");
 
+
                 return false;
             }
         });
-
-
-        expandableListView.setAdapter(adapter);
 
 
     }
