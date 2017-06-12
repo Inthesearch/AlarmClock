@@ -4,6 +4,7 @@ import android.app.AlarmManager;
 import android.app.AlertDialog;
 import android.app.Dialog;
 import android.app.PendingIntent;
+import android.app.TimePickerDialog;
 import android.content.Context;
 import android.content.Intent;
 import android.text.Layout;
@@ -17,10 +18,12 @@ import android.widget.CompoundButton;
 import android.widget.ImageButton;
 import android.widget.Switch;
 import android.widget.TextView;
+import android.widget.TimePicker;
 import android.widget.Toast;
 
 import java.lang.reflect.Array;
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -39,6 +42,10 @@ public class ExpandableAdapter extends BaseExpandableListAdapter {
     Intent intent ;
     PendingIntent pendingIntent;
     AlarmManager manager;
+    int hour1, minute2, year, day,month;
+    Calendar calendar;
+    TextView alarm_time;
+    int gr;
 
 
     public ExpandableAdapter(Context ctx, ArrayList<ParentBean> parentlist, ArrayList<ChildBean> childlist, Map<ParentBean,ArrayList<ChildBean>> map){
@@ -110,13 +117,19 @@ public class ExpandableAdapter extends BaseExpandableListAdapter {
     public View getGroupView(final int groupPosition, boolean isExpanded, View convertView, ViewGroup parent) {
 
         ParentBean header = (ParentBean) this.getGroup(groupPosition);
+        hour1 = header.getHour();
+        minute2 = header.getMinute();
+        day = header.getDate();
+        month = header.getMonth();
+        year = header.getYear();
 
             if(convertView == null){
                 LayoutInflater inflater = (LayoutInflater) this.ctx.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
                 convertView = inflater.inflate(R.layout.parent_view,null);
             }
             Log.e("Mision2",header.toString());
-            TextView alarm_time = (TextView)convertView.findViewById(R.id.alarm_time);
+            alarm_time = (TextView)convertView.findViewById(R.id.alarm_time);
+
         Switch onOff = (Switch)convertView.findViewById(R.id.onOff);
         onOff.setChecked(parentlist.get(groupPosition).status);
         onOff.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
@@ -133,6 +146,18 @@ public class ExpandableAdapter extends BaseExpandableListAdapter {
                     Log.e("alarm","stops");
                     parentlist.get(groupPosition).setStatus(false);
                 }
+            }
+        });
+        alarm_time.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                 gr= groupPosition;
+
+               setTime();
+
+
+
+
             }
         });
         if(header.getHour()>=12){
@@ -206,6 +231,53 @@ public class ExpandableAdapter extends BaseExpandableListAdapter {
 
         return convertView;
     }
+
+
+    public void setTime(){
+
+        TimePickerDialog timePickerDialog = new TimePickerDialog(ctx, new TimePickerDialog.OnTimeSetListener(){
+            @Override
+            public void onTimeSet(TimePicker view, int hourOfDay, int minute) {
+
+                hour1= hourOfDay;
+                minute2 = minute;
+                Toast.makeText(ctx, hour1+" "+minute2+"is selected",Toast.LENGTH_LONG).show();
+
+
+                Log.d("timepicker",String.valueOf(hour1)+" "+String.valueOf(minute2));
+
+
+                parentlist.get(gr).setHour(hour1);
+                parentlist.get(gr).setMinute(minute2);
+                calendar = Calendar.getInstance();
+                calendar.set(year, month, day, hour1, minute2,00);
+                parentlist.get(gr).setTime(calendar.getTimeInMillis());
+                pendingIntent = PendingIntent.getBroadcast(ctx,parentlist.get(gr).getRequest(),intent,PendingIntent.FLAG_UPDATE_CURRENT);
+                manager.cancel(pendingIntent);
+                manager.set(AlarmManager.RTC_WAKEUP,parentlist.get(gr).getTime(),pendingIntent);
+                Log.e("time","changes");
+
+                if(parentlist.get(gr).getHour()>=12){
+                    parentlist.get(gr).setHour(parentlist.get(gr).getHour()-12);
+                }if(parentlist.get(gr).getHour()<10){
+                    alarm_time.setText("0"+parentlist.get(gr).getHour()+" : "+parentlist.get(gr).getMinute());
+                }else{
+                    alarm_time.setText(parentlist.get(gr).getHour()+" : "+parentlist.get(gr).getMinute());}
+
+
+
+                //Log.d("timepicker",String.valueOf(hour)+" "+String.valueOf(minute1));
+
+                //set_date();
+
+
+
+            }
+        },hour1,minute2,false);
+        timePickerDialog.show();
+    }
+
+
 
     @Override
     public boolean isChildSelectable(int groupPosition, int childPosition) {
