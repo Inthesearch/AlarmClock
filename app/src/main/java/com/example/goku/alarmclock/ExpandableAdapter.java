@@ -2,9 +2,12 @@ package com.example.goku.alarmclock;
 
 import android.app.AlarmManager;
 import android.app.AlertDialog;
+import android.app.DatePickerDialog;
 import android.app.Dialog;
 import android.app.PendingIntent;
 import android.app.TimePickerDialog;
+import android.content.ContentResolver;
+import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
 import android.text.Layout;
@@ -15,6 +18,7 @@ import android.view.ViewGroup;
 import android.widget.BaseExpandableListAdapter;
 import android.widget.CheckBox;
 import android.widget.CompoundButton;
+import android.widget.DatePicker;
 import android.widget.ImageButton;
 import android.widget.Switch;
 import android.widget.TextView;
@@ -37,25 +41,28 @@ public class ExpandableAdapter extends BaseExpandableListAdapter {
 
     private Context ctx;
     private ArrayList<ParentBean> parentlist;
-    private ArrayList<ChildBean> childlist;
-    Map<ParentBean ,ArrayList<ChildBean>> map;
+    public ArrayList<ChildBean> childlist;
+    Map<ParentBean ,ChildBean> map;
     Intent intent ;
     PendingIntent pendingIntent;
     AlarmManager manager;
     int hour1, minute2, year, day,month;
     Calendar calendar;
-    TextView alarm_time;
+    TextView alarm_time, alarm_date;
     int gr;
+    ContentResolver resolver ;
 
 
-    public ExpandableAdapter(Context ctx, ArrayList<ParentBean> parentlist, ArrayList<ChildBean> childlist, Map<ParentBean,ArrayList<ChildBean>> map){
+    public ExpandableAdapter(Context ctx, ArrayList<ParentBean> parentlist, ArrayList<ChildBean> childlist, Map<ParentBean,ChildBean> map){
 
         this.ctx = ctx;
         this.parentlist = parentlist;
         this.childlist = childlist;
          this.map = map;
         intent = new Intent(ctx,BroadcastReciever.class);
+        //intent.putExtra("chillist",childlist);
         manager = (AlarmManager)ctx.getSystemService(Context.ALARM_SERVICE);
+        resolver =  ctx.getContentResolver();
 
         //for(ParentBean pb : parentlist){
             ;
@@ -77,7 +84,7 @@ public class ExpandableAdapter extends BaseExpandableListAdapter {
     @Override
     public int getChildrenCount(int groupPosition) {
         Log.e("problem", "30");
-        Log.e("childlist",String.valueOf(map.get(parentlist.get(groupPosition)).size()));
+            //Log.e("childlist",String.valueOf(map.get(parentlist.get(groupPosition)).size()));
 
         return 1;
     }
@@ -86,13 +93,13 @@ public class ExpandableAdapter extends BaseExpandableListAdapter {
     public Object getGroup(int groupPosition) {
         Log.e("problem2 ", parentlist.get(groupPosition).toString());
         Log.e("groupPosition",String.valueOf(groupPosition));
-        Log.e("map", String.valueOf(map.get(parentlist.get(groupPosition)).get(0)));
+//        Log.e("map", String.valueOf(map.get(parentlist.get(groupPosition)).get(0)));
         return parentlist.get(groupPosition);
     }
 
     @Override
     public Object getChild(int groupPosition, int childPosition) {
-        Log.e("problem3",childlist.get(childPosition).toString());
+        Log.e("problem3",childlist.get(groupPosition).toString());
         return childlist.get(groupPosition);
     }
 
@@ -119,9 +126,9 @@ public class ExpandableAdapter extends BaseExpandableListAdapter {
         ParentBean header = (ParentBean) this.getGroup(groupPosition);
         hour1 = header.getHour();
         minute2 = header.getMinute();
-        day = header.getDate();
-        month = header.getMonth();
-        year = header.getYear();
+        //day = header.getDate();
+        //month = header.getMonth();
+        //year = header.getYear();
 
             if(convertView == null){
                 LayoutInflater inflater = (LayoutInflater) this.ctx.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
@@ -130,21 +137,35 @@ public class ExpandableAdapter extends BaseExpandableListAdapter {
             Log.e("Mision2",header.toString());
             alarm_time = (TextView)convertView.findViewById(R.id.alarm_time);
 
+       // alarm_date = (TextView)convertView.findViewById(R.id.date);
         Switch onOff = (Switch)convertView.findViewById(R.id.onOff);
-        onOff.setChecked(parentlist.get(groupPosition).status);
+        onOff.setChecked(parentlist.get(groupPosition).isStatus());
         onOff.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
             @Override
             public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
                 if(isChecked==true){
-
+                    if(childlist.get(groupPosition).getVibrate()==true){
+                        intent.putExtra("childlist",childlist);
+                    }
+                    ContentValues values = new ContentValues();
+                    values.put(Util.parentstatus,String.valueOf(true));
+                    String where = Util.parentid +" = "+parentlist.get(groupPosition).getId();
+                  int x=  resolver.update(Util.PARENT_URI,values,where,null);
                     pendingIntent = PendingIntent.getBroadcast(ctx,parentlist.get(groupPosition).getRequest(),intent,PendingIntent.FLAG_UPDATE_CURRENT);
                     manager.set(AlarmManager.RTC_WAKEUP,parentlist.get(groupPosition).getTime(),pendingIntent);
                     parentlist.get(groupPosition).setStatus(true);
+                    Toast.makeText(ctx,"alarm on "+x,Toast.LENGTH_SHORT).show();
                 }if(isChecked==false){
+                    ContentValues values = new ContentValues();
+                    values.put(Util.parentstatus,String.valueOf(true));
+                    String where = Util.parentid +" = "+parentlist.get(groupPosition).getId();
+                    int x = resolver.update(Util.PARENT_URI,values,where,null);
+
                     pendingIntent = PendingIntent.getBroadcast(ctx,parentlist.get(groupPosition).getRequest(),intent,PendingIntent.FLAG_UPDATE_CURRENT);
                     manager.cancel(pendingIntent);
                     Log.e("alarm","stops");
                     parentlist.get(groupPosition).setStatus(false);
+                    Toast.makeText(ctx,"alarm off" + x,Toast.LENGTH_SHORT).show();
                 }
             }
         });
@@ -152,14 +173,18 @@ public class ExpandableAdapter extends BaseExpandableListAdapter {
             @Override
             public void onClick(View v) {
                  gr= groupPosition;
-
-               setTime();
-
-
-
-
+                setTime();
             }
         });
+        /*alarm_date.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                gr = groupPosition;
+                setDate();
+            }
+        });*/
+
+
         if(header.getHour()>=12){
             header.setHour(header.getHour()-12);
         }if(header.getHour()<10){
@@ -167,12 +192,12 @@ public class ExpandableAdapter extends BaseExpandableListAdapter {
         }else{
         alarm_time.setText(header.getHour()+" : "+header.getMinute());}
 
-        TextView date = (TextView)convertView.findViewById(R.id.date);
+        /*TextView date = (TextView)convertView.findViewById(R.id.date);
         if(header.getDate()<10){
             date.setText("0"+header.getMonth()+"-"+header.getDate()+"-"+header.getYear());
         }else {
             date.setText(header.getMonth() + "-" + header.getDate() + "-" + header.getYear());
-        }
+        }*/
 
 
 
@@ -195,13 +220,26 @@ public class ExpandableAdapter extends BaseExpandableListAdapter {
         vibrate.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
             @Override
             public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
-                if (isChecked==true){
-                    childlist.get(groupPosition).setVibrate(true);
-                }else{
-                    childlist.get(groupPosition).setVibrate(false);
+
+
+                manager.cancel(pendingIntent);
+                Intent in = new Intent(ctx, BroadcastReciever.class);
+                if (parentlist.get(groupPosition).isStatus() == true) {
+                    if (isChecked == true) {
+                        in.putExtra("childlist", childlist);
+                        in.putExtra("groupPosition", groupPosition);
+                        childlist.get(groupPosition).setVibrate(true);
+
+
+                    } else {
+                        childlist.get(groupPosition).setVibrate(false);
+
+
+                    }
+                    pendingIntent = PendingIntent.getBroadcast(ctx, parentlist.get(groupPosition).getRequest(), in, PendingIntent.FLAG_UPDATE_CURRENT);
+                    manager.set(AlarmManager.RTC_WAKEUP, parentlist.get(groupPosition).getTime(), pendingIntent);
                 }
-            }
-        });
+            }});
 
         ImageButton delete = (ImageButton) convertView.findViewById(R.id.delete);
         delete.setOnClickListener(new View.OnClickListener() {
@@ -216,19 +254,17 @@ public class ExpandableAdapter extends BaseExpandableListAdapter {
                 childlist.remove(groupPosition);
                 parentlist.remove(groupPosition);
                 Log.e("one","time");
+                Log.e("parentid", String.valueOf(parentlist.get(groupPosition).getId()));
+                String where = Util.parentid + "="+parentlist.get(groupPosition).getId();
+                int x = resolver.delete(Util.PARENT_URI,where,null);
+                String where1 = Util.childid + " = "+ childlist.get(groupPosition).getId();
+                int y = resolver.delete(Util.CHILD_URI,where1,null);
+                Toast.makeText(ctx,x+" "+y+" deleted",Toast.LENGTH_SHORT).show();
 //                this.notify();
                 notifyDataSetChanged();
 
             }
         });
-
-
-
-
-
-
-
-
         return convertView;
     }
 
@@ -249,12 +285,24 @@ public class ExpandableAdapter extends BaseExpandableListAdapter {
 
                 parentlist.get(gr).setHour(hour1);
                 parentlist.get(gr).setMinute(minute2);
+                ContentValues values = new ContentValues();
                 calendar = Calendar.getInstance();
-                calendar.set(year, month, day, hour1, minute2,00);
+                calendar.set( hour1, minute2,00);
                 parentlist.get(gr).setTime(calendar.getTimeInMillis());
+                values.put(Util.parenthour,hour1);
+                values.put(Util.parentminute,minute2);
+                values.put(Util.parenttime,String.valueOf(calendar.getTimeInMillis()));
+                String where = Util.parentid +" = "+parentlist.get(gr).getId();
+                int x = resolver.update(Util.PARENT_URI,values,where,null);
+
+
+                if(parentlist.get(gr).isStatus()){
+                    if(childlist.get(gr).getVibrate()) {
+                        intent.putExtra("childlist", childlist);
+                    }
                 pendingIntent = PendingIntent.getBroadcast(ctx,parentlist.get(gr).getRequest(),intent,PendingIntent.FLAG_UPDATE_CURRENT);
                 manager.cancel(pendingIntent);
-                manager.set(AlarmManager.RTC_WAKEUP,parentlist.get(gr).getTime(),pendingIntent);
+                manager.set(AlarmManager.RTC_WAKEUP,parentlist.get(gr).getTime(),pendingIntent);}
                 Log.e("time","changes");
 
                 if(parentlist.get(gr).getHour()>=12){
@@ -264,17 +312,46 @@ public class ExpandableAdapter extends BaseExpandableListAdapter {
                 }else{
                     alarm_time.setText(parentlist.get(gr).getHour()+" : "+parentlist.get(gr).getMinute());}
 
-
-
-                //Log.d("timepicker",String.valueOf(hour)+" "+String.valueOf(minute1));
-
-                //set_date();
-
-
-
             }
         },hour1,minute2,false);
         timePickerDialog.show();
+    }
+
+    public void setDate(){
+        DatePickerDialog datePickerDialog = new DatePickerDialog(ctx, new DatePickerDialog.OnDateSetListener() {
+            @Override
+            public void onDateSet(DatePicker view, int year1, int month1, int dayOfMonth1) {
+
+                year = year1;
+                month = month1;
+                day = dayOfMonth1;
+                calendar = Calendar.getInstance();
+                calendar.set(year,month,day,hour1,minute2,0);
+
+                parentlist.get(gr).setTime(calendar.getTimeInMillis());
+                parentlist.get(gr).setDate(day);
+                parentlist.get(gr).setMonth(month);
+                parentlist.get(gr).setYear(year);
+                pendingIntent = PendingIntent.getBroadcast(ctx,parentlist.get(gr).getRequest(),intent,PendingIntent.FLAG_UPDATE_CURRENT);
+                manager.cancel(pendingIntent);
+                manager.set(AlarmManager.RTC_WAKEUP,parentlist.get(gr).getTime(),pendingIntent);
+                alarm_date.setText(month+"-"+day+"-"+year);
+
+                // calendar.set(year,month,day,hour1,minute2,0);
+                Log.e("tim2",String.valueOf(minute2));
+                Log.e("pending",String.valueOf(calendar.getTimeInMillis()));
+
+
+              /*  ParentBean pb = new ParentBean(hour, minute1, date, month, year, true);
+                ChildBean cb = new ChildBean(song, vibrate );
+                pb.toString();
+                cb.toString();*/
+            }
+        },year, month,day);
+
+        datePickerDialog.setTitle("Select date");
+        datePickerDialog.show();
+
     }
 
 
